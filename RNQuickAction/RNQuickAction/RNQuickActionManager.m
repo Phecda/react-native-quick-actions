@@ -30,17 +30,17 @@ NSDictionary *RNQuickAction(UIApplicationShortcutItem *item) {
 
 RCT_EXPORT_MODULE();
 
-@synthesize bridge = _bridge;
-
-- (instancetype)init
+- (void)startObserving
 {
-    if ((self = [super init])) {
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handleQuickActionPress:)
-                                                     name:RCTShortcutItemClicked
-                                                   object:nil];
-    }
-    return self;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleQuickActionPress:)
+                                                 name:RCTShortcutItemClicked
+                                               object:nil];
+}
+
+- (void)stopObserving
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (dispatch_queue_t)methodQueue {
@@ -51,14 +51,9 @@ RCT_EXPORT_MODULE();
     return YES;
 }
 
-- (void)dealloc
-{
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-
 - (void)setBridge:(RCTBridge *)bridge
 {
-    _bridge = bridge;
+    [super setBridge:bridge];
     _initialAction = [bridge.launchOptions[UIApplicationLaunchOptionsShortcutItemKey] copy];
 }
 
@@ -66,7 +61,7 @@ RCT_EXPORT_MODULE();
 - (NSArray*)dynamicShortcutItemsForPassedArray:(NSArray*)passedArray {
     // FIXME: Dynamically map icons from UIApplicationShortcutIconType to / from their string counterparts
     // so we don't have to update this list every time Apple adds new system icons.
-    NSDictionary *icons = @{
+    NSMutableDictionary *icons = @{
         @"Compose": @(UIApplicationShortcutIconTypeCompose),
         @"Play": @(UIApplicationShortcutIconTypePlay),
         @"Pause": @(UIApplicationShortcutIconTypePause),
@@ -74,29 +69,33 @@ RCT_EXPORT_MODULE();
         @"Location": @(UIApplicationShortcutIconTypeLocation),
         @"Search": @(UIApplicationShortcutIconTypeSearch),
         @"Share": @(UIApplicationShortcutIconTypeShare),
-        @"Prohibit": @(UIApplicationShortcutIconTypeProhibit),
-        @"Contact": @(UIApplicationShortcutIconTypeContact),
-        @"Home": @(UIApplicationShortcutIconTypeHome),
-        @"MarkLocation": @(UIApplicationShortcutIconTypeMarkLocation),
-        @"Favorite": @(UIApplicationShortcutIconTypeFavorite),
-        @"Love": @(UIApplicationShortcutIconTypeLove),
-        @"Cloud": @(UIApplicationShortcutIconTypeCloud),
-        @"Invitation": @(UIApplicationShortcutIconTypeInvitation),
-        @"Confirmation": @(UIApplicationShortcutIconTypeConfirmation),
-        @"Mail": @(UIApplicationShortcutIconTypeMail),
-        @"Message": @(UIApplicationShortcutIconTypeMessage),
-        @"Date": @(UIApplicationShortcutIconTypeDate),
-        @"Time": @(UIApplicationShortcutIconTypeTime),
-        @"CapturePhoto": @(UIApplicationShortcutIconTypeCapturePhoto),
-        @"CaptureVideo": @(UIApplicationShortcutIconTypeCaptureVideo),
-        @"Task": @(UIApplicationShortcutIconTypeTask),
-        @"TaskCompleted": @(UIApplicationShortcutIconTypeTaskCompleted),
-        @"Alarm": @(UIApplicationShortcutIconTypeAlarm),
-        @"Bookmark": @(UIApplicationShortcutIconTypeBookmark),
-        @"Shuffle": @(UIApplicationShortcutIconTypeShuffle),
-        @"Audio": @(UIApplicationShortcutIconTypeAudio),
-        @"Update": @(UIApplicationShortcutIconTypeUpdate)
-    };
+    }.mutableCopy;
+    if (@available(iOS 9.1, *)) {
+        [icons addEntriesFromDictionary: @{
+            @"Prohibit": @(UIApplicationShortcutIconTypeProhibit),
+            @"Contact": @(UIApplicationShortcutIconTypeContact),
+            @"Home": @(UIApplicationShortcutIconTypeHome),
+            @"MarkLocation": @(UIApplicationShortcutIconTypeMarkLocation),
+            @"Favorite": @(UIApplicationShortcutIconTypeFavorite),
+            @"Love": @(UIApplicationShortcutIconTypeLove),
+            @"Cloud": @(UIApplicationShortcutIconTypeCloud),
+            @"Invitation": @(UIApplicationShortcutIconTypeInvitation),
+            @"Confirmation": @(UIApplicationShortcutIconTypeConfirmation),
+            @"Mail": @(UIApplicationShortcutIconTypeMail),
+            @"Message": @(UIApplicationShortcutIconTypeMessage),
+            @"Date": @(UIApplicationShortcutIconTypeDate),
+            @"Time": @(UIApplicationShortcutIconTypeTime),
+            @"CapturePhoto": @(UIApplicationShortcutIconTypeCapturePhoto),
+            @"CaptureVideo": @(UIApplicationShortcutIconTypeCaptureVideo),
+            @"Task": @(UIApplicationShortcutIconTypeTask),
+            @"TaskCompleted": @(UIApplicationShortcutIconTypeTaskCompleted),
+            @"Alarm": @(UIApplicationShortcutIconTypeAlarm),
+            @"Bookmark": @(UIApplicationShortcutIconTypeBookmark),
+            @"Shuffle": @(UIApplicationShortcutIconTypeShuffle),
+            @"Audio": @(UIApplicationShortcutIconTypeAudio),
+            @"Update": @(UIApplicationShortcutIconTypeUpdate)
+        }];
+    }
 
     NSMutableArray *shortcutItems = [NSMutableArray new];
 
@@ -157,8 +156,7 @@ RCT_EXPORT_METHOD(clearShortcutItems)
 
 - (void)handleQuickActionPress:(NSNotification *) notification
 {
-    [_bridge.eventDispatcher sendDeviceEventWithName:@"quickActionShortcut"
-                                                body:notification.userInfo];
+    [self sendEventWithName:@"quickActionShortcut" body:notification.userInfo];
 }
 
 - (NSDictionary *)constantsToExport
@@ -166,6 +164,11 @@ RCT_EXPORT_METHOD(clearShortcutItems)
     return @{
       @"initialAction": RCTNullIfNil(RNQuickAction(_initialAction))
     };
+}
+
+- (NSArray<NSString *> *)supportedEvents
+{
+    return @[@"quickActionShortcut"];
 }
 
 @end
